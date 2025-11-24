@@ -11,6 +11,7 @@ export const DEFAULT_PARAMS = {
   showBoundingBox: false,
   showBackgroundBoundingBox: false,
   showCameraBoundingBox: false,
+  customModelUrl: null,
 };
 
 export const MIN_IPD = 0; // Cyclops!

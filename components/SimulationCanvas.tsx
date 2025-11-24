@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { 
   View, 
@@ -11,7 +11,8 @@ import {
   Box,
   Text,
   Line,
-  Cone
+  Cone,
+  useGLTF
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { SimulationParams, ViewMode } from '../types';
@@ -107,9 +108,49 @@ const BoundingBoxOverlay = ({
   );
 };
 
+// Component to load and display custom GLB models
+const CustomModel = ({ 
+  url, 
+  material, 
+  onLoaded 
+}: { 
+  url: string, 
+  material: THREE.Material, 
+  onLoaded?: (dims: [number, number, number]) => void 
+}) => {
+  const { scene } = useGLTF(url);
+  const clonedScene = useMemo(() => {
+    const s = scene.clone();
+    // Center the model
+    const box = new THREE.Box3().setFromObject(s);
+    const center = box.getCenter(new THREE.Vector3());
+    s.position.sub(center); // Center the geometry at 0,0,0
+    
+    // Override material to match app style
+    s.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        (child as THREE.Mesh).material = material;
+      }
+    });
+    return s;
+  }, [scene, material]);
+
+  useEffect(() => {
+    if (onLoaded && clonedScene) {
+      const box = new THREE.Box3().setFromObject(clonedScene);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      onLoaded([size.x, size.y, size.z]);
+    }
+  }, [clonedScene, onLoaded]);
+
+  return <primitive object={clonedScene} />;
+};
+
 // Reusable 3D Scene Content
 const SceneContent = ({ params, isGodView = false }: { params: SimulationParams, isGodView?: boolean }) => {
   const meshRef = useRef<THREE.Group>(null);
+  const [customDims, setCustomDims] = useState<[number, number, number]>([2, 2, 2]);
   
   // Use deterministic animation logic instead of <Float> to ensure Left/Right views are perfectly synced
   useFrame((state, delta) => {
@@ -137,7 +178,7 @@ const SceneContent = ({ params, isGodView = false }: { params: SimulationParams,
     wireframe: params.wireframe
   }), [params.wireframe]);
 
-  const dims = getObjectDimensions(params.objectType);
+  const dims = params.objectType === 'custom' ? customDims : getObjectDimensions(params.objectType);
 
   return (
     <>
@@ -177,6 +218,16 @@ const SceneContent = ({ params, isGodView = false }: { params: SimulationParams,
                </group>
              ))}
            </group>
+        )}
+        {params.objectType === 'custom' && params.customModelUrl && (
+          <CustomModel 
+            url={params.customModelUrl} 
+            material={material} 
+            onLoaded={setCustomDims} 
+          />
+        )}
+        {params.objectType === 'custom' && !params.customModelUrl && (
+           <Text color="white" fontSize={0.5}>请上传模型</Text>
         )}
 
         {/* Target Object Bounding Box */}

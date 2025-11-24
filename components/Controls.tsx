@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { SimulationParams, ViewMode } from '../types';
 import { MIN_IPD, MAX_IPD, MIN_DISTANCE, MAX_DISTANCE } from '../constants';
-import { Sliders, Eye, Box, Move3d, Grid3X3, Play, Pause, Square, Camera, Image, Info } from 'lucide-react';
+import { Sliders, Eye, Box, Move3d, Grid3X3, Play, Pause, Square, Camera, Image, Info, Upload } from 'lucide-react';
 
 interface ControlsProps {
   params: SimulationParams;
@@ -84,9 +84,20 @@ export const Controls: React.FC<ControlsProps> = ({
   onAnalyze, 
   isAnalyzing 
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const updateParam = (key: keyof SimulationParams, value: any) => {
     setParams(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      // Clean up previous URL if needed (in a real app), here we just overwrite
+      updateParam('customModelUrl', url);
+      updateParam('objectType', 'custom');
+    }
   };
 
   return (
@@ -165,6 +176,28 @@ export const Controls: React.FC<ControlsProps> = ({
                 {item.label}
               </button>
             ))}
+          </div>
+
+          {/* Upload Custom Model */}
+          <div className="mb-4">
+             <input 
+               type="file" 
+               accept=".glb,.gltf" 
+               className="hidden" 
+               ref={fileInputRef}
+               onChange={handleFileUpload}
+             />
+             <button
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-full py-2 px-3 rounded text-xs font-medium flex items-center justify-center gap-2 transition-all border ${
+                  params.objectType === 'custom'
+                    ? 'bg-indigo-600/20 text-indigo-400 border-indigo-600/50'
+                    : 'bg-slate-700 text-slate-300 border-transparent hover:bg-slate-600'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {params.objectType === 'custom' && params.customModelUrl ? "切换自定义模型" : "上传模型 (.glb/.gltf)"}
+              </button>
           </div>
 
           <div className="flex gap-2">
